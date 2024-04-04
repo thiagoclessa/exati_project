@@ -8,9 +8,13 @@ Após ser realizado o clone do repositório é necessário a configuração de t
 
 Com as variáveis de ambiente definida no repositório já é possível executar a pipeline para provisionamento do EC2, porém há uma configuração padrão de provisionamento localizada em [config/defaults.yml](config/defaults.yml) que pode ser alterada de acordo com a necessidade do usuário.
 
+OBS: foi configurado na conta um S3 para backend do terraform e um keypair para execução da pipeline configure o secret `KEYPAIR` para acesso ec2 que será solicitado ao no deploy do script terraform e app.
+
 ### Pipeline
 
-A pipeline é dividia em 2 workflows, sendo eles:
+A pipeline de infra é dividia em 2 workflows, sendo eles:
   - **Deploy (execução manual):** Provisiona a infraestrutura via Terraform.
   - **Destroy (execução manual):** Destrói a infraestrutura.
 
+Deploy da API em python é nescessario rodar o job deploy_app p mesmo ira subir um api simples em flash e restartar o ngnix:
+  - **Deploy_app (execução manual):** sube e atualiza a api alem de realizar um restart no nginx.

@@ -1,0 +1,64 @@
+name: deploy
+
+on:
+  workflow_dispatch:
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: hashicorp/setup-terraform@v2
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+      - uses: actions/cache@v3cd 
+        with:
+          path: |
+            .terraform/**
+            .terraform.lock.hcl
+            plan.cache
+          key: terraform-lock-${{ github.event.workflow_run.head_branch }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform init
+          terraform plan -no-color -out plan_cache.json 
+      - name: Terraform apply
+        run: terraform apply -input=false -no-color -auto-approve plan_cache.json
+  deploy_site:
+    runs-on: ubuntu-latest
+    needs: apply
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Write secret to file
+        run: |
+          echo "${{ secrets.KEYPAIR }}" > cert.pem
+          chmod 600 cert.pem
+
+      - name: GET Public IP	
+        run: |
+          HOST=`aws ec2 describe-instances --filters 'Name=tag:Name,Values=test_exati'  --output text --query 'Reservations[*].Instances[*].PublicIpAddress'`
+          echo "Host=$HOST" >> $GITHUB_ENV
+          
+      - name: deploy site
+        run: |
+           sed -i "s/domain/${{ env.Host }}/g" ./app/nginx/site.conf
+           scp -i ./cert.pem -o StrictHostKeyChecking=no ./app/nginx/site.conf $USERNAME@${{ env.Host }}:/etc/nginx/sites-enabled/
+           ssh -i ./cert.pem -o StrictHostKeyChecking=no $USERNAME@${{ env.Host }} "sudo ln -s /etc/nginx/sites-available/api.conf /etc/nginx/sites-enabled/g && sudo mkdir app && sudo systemctl restart nginx"
+
+
+

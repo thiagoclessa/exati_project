@@ -1,5 +1,5 @@
 ---
-cluster_name: "cluster-test"
+EC2_Name: "test_exati"
 VPC_CIDRblock: "10.0.0.0/16"
 publicsCIDRblock: "10.0.6.0/24"
 availabilityZone: "us-east-1a"

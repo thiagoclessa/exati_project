@@ -104,9 +104,10 @@ sudo systemctl start nginx
 sudo systemctl enable nginx
 sudo apt install python3.9
 sudo apt-get install python-is-python3
+pip install Flask
 EOF
   tags = {
-  Name = local.config.cluster_name
+  Name = local.config.EC2_Name
   Template = "Exati_Ec2"
   }
 }
